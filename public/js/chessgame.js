@@ -1,5 +1,3 @@
-
-
 const socket = io();
 const chess = new Chess();
 const boardElement = document.querySelector(".chessboard");
@@ -27,52 +25,74 @@ const renderBoard = () => {
           "piece",
           square.color === "w" ? "white" : "black"
         );
-       pieceElement.innerText = getPieceUnicode(square);
-       pieceElement.draggable = playerRole === square.color;
-
-       pieceElement.addEventListener("dragstart",(e)=>{
-        if (pieceElement.draggable){
+        pieceElement.innerText = getPieceUnicode(square);
+        
+        // Only allow dragging if it's the player's piece
+        if (playerRole === square.color) {
+          pieceElement.draggable = true;
+          pieceElement.classList.add("draggable");
+          
+          pieceElement.addEventListener("dragstart", (e) => {
             draggedPiece = pieceElement;
             sourceSquare = {row: rowIndex, col: squareIndex};
-            e.dataTransfer.setData("text/plain", '');
+            // This is essential for Firefox
+            e.dataTransfer.setData("text/plain", "");
+            // Add visual feedback
+            setTimeout(() => pieceElement.classList.add("dragging"), 0);
+          });
+
+          pieceElement.addEventListener("dragend", (e) => {
+            if (draggedPiece) {
+              draggedPiece.classList.remove("dragging");
+            }
+            draggedPiece = null;
+            sourceSquare = null;
+          });
         }
-       })
-       pieceElement.addEventListener("dragend",(e)=>{
-        draggedPiece = null;
-        sourceSquare = null;
-       })
 
         squareElement.appendChild(pieceElement);
       }
-       
-      squareElement.addEventListener("dragover", (e) => {
+
+      // Add drop zone functionality to all squares
+      squareElement.addEventListener("dragenter", (e) => {
         e.preventDefault();
+        squareElement.classList.add("drop-target");
+      });
+
+      squareElement.addEventListener("dragleave", (e) => {
+        squareElement.classList.remove("drop-target");
+      });
+
+      squareElement.addEventListener("dragover", (e) => {
+        e.preventDefault(); // This is essential to allow dropping
       });
 
       squareElement.addEventListener("drop", (e) => {
         e.preventDefault();
-        const targetSource = {
-            row: parseInt(e.target.dataset.row),
-            col: parseInt(e.target.dataset.col),
-        };
+        squareElement.classList.remove("drop-target");
+        
         if (draggedPiece && sourceSquare) {
-         handleMove(sourceSquare, targetSource);
+          const targetRow = parseInt(squareElement.dataset.row);
+          const targetCol = parseInt(squareElement.dataset.col);
+          handleMove(sourceSquare, {row: targetRow, col: targetCol});
         }
       });
+
       boardElement.appendChild(squareElement);
     });
   });
-  if(playerRole ==='b'){
+
+  if (playerRole === 'b') {
     boardElement.classList.add("flipped");
-  }else{
+  } else {
     boardElement.classList.remove("flipped");
   }
 };
 
 const handleMove = (source, target) => {
     const move = {
-        from: `${String.fromCharCode(97+source.col)}${8 - source.row}`,
-        to: `${String.fromCharCode(97+target.col)}${8 - target.row}`,
+        from: `${String.fromCharCode(97 + source.col)}${8 - source.row}`,
+        to: `${String.fromCharCode(97 + target.col)}${8 - target.row}`,
         promotion: "q"
     };
     socket.emit("move", move);
@@ -91,23 +111,26 @@ const getPieceUnicode = (piece) => {
         r: "♜",  // Rook
         b: "♝",  // Bishop
         n: "♞",  // Knight
-        p: "♙"   // Pawn
+        p: "♙"   // Pawn - Fixed black pawn unicode
     };
     return unicodePieces[piece.type] || "";
 };
-socket.on ("playerRole",function(role){
+
+socket.on("playerRole", function(role) {
     playerRole = role;
     renderBoard();
-})
-socket.on('spectatorRole', function() {
-    playerRole = null 
-    renderBoard();
-})
+});
 
-socket.on('boardState',function(fen){
+socket.on('spectatorRole', function() {
+    playerRole = null;
+    renderBoard();
+});
+
+socket.on('boardState', function(fen) {
     chess.load(fen);
     renderBoard();
-})
+});
+
 socket.on('move', function(move) {
     chess.move(move);
     renderBoard();
