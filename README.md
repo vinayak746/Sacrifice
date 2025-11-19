@@ -146,8 +146,7 @@ Contributions are welcome! Feel free to:
 
 ## 📄 License
 
-This project is licensed under the ISC License.
-
+This project is licensed under the [MIT License](LICENSE).
 ## 👨‍💻 Author
 
 **Vinayak**
